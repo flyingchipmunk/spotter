@@ -74,7 +74,7 @@ $CONFIG = array(
 
 // This is the base URL for retrieving the raw forecast data,
 //   don't change unless you know what you are doing!
-'baseUrl' => "http://aviationweather.gov/products/nws/all",
+'baseUrl' => "http://aviationweather.gov/windtemp/data",
 
 );
 

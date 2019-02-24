@@ -152,7 +152,11 @@ if ($updateCache)
 
     $raw = '';
 
-    $handle = fopen($CONFIG['baseUrl'].'?fint='.$time.'&lvl=lo', "r");
+    $url = $CONFIG['baseUrl'].'?&region=all&layout=off&fcast='.$time.'&level=low';
+
+    if ($DEBUG) $body .= "url: " . $url . "\n";
+
+    $handle = fopen($url, "r");
 
     // First parse the raw block of data
     if ($handle)
