@@ -608,7 +608,7 @@ function initialize() {
   });
 
   theSpotFFCanopyDriftMarker.addListener('click', function() {
-     theSpotheSpotCanopyInfoWindow.open(map, theSpotFFCanopyDriftMarker);
+     theSpotCanopyInfoWindow.open(map, theSpotFFCanopyDriftMarker);
   });
 
   bounds = new google.maps.LatLngBounds();
