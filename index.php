@@ -102,7 +102,7 @@ if (file_exists($cacheFile) && ( (time() - filemtime($cacheFile))/60/60/24 < 1 )
     {
     	$raw = file_get_contents($cacheFile);
     }
-    	
+
 
     if ($DEBUG) $body .= $raw;
 
@@ -192,7 +192,7 @@ if ($updateCache)
 		{
         	fwrite($handle,bzcompress($raw));
         }
-        else 
+        else
         {
         	fwrite($handle,$raw);
         }
@@ -496,11 +496,11 @@ else
 
 if ($DEBUG)
 {
-    $mapType = "map.setMapType(G_NORMAL_MAP);";
+    $mapType = "ROADMAP";
 }
 else
 {
-    $mapType = "map.setMapType(G_SATELLITE_MAP);";
+    $mapType = "SATELLITE";
 }
 
 $script_path = dirname($_SERVER['SCRIPT_NAME']);
@@ -515,72 +515,64 @@ $controlWidth = $CONFIG['mapWidth'] - 30;
 $header = <<<HTML
 <html>
 <head><title>$pageTitle</title></head>
-<script src="http://maps.google.com/maps?file=api&v=2&key=$googleApi&sensor=false"
-        type="text/javascript">
-</script>
+<script type="text/javascript" src="//maps.googleapis.com/maps/api/js?key=$googleApi"></script>
 <script type="text/javascript">
 function initialize() {
-  var map = new GMap2(document.getElementById("map_canvas"));
-  var lzPoint = new GLatLng($lzLat, $lzLon);
-  map.setCenter(lzPoint, 15);
-  $mapType
-  map.setUIToDefault();
+  var map = new google.maps.Map(document.getElementById("map_canvas"), {
+      center: new google.maps.LatLng($lzLat, $lzLon),
+      zoom: 13,
+      mapTypeId: google.maps.MapTypeId.$mapType
+  });
 
-  var bounds = new GLatLngBounds();
+  var lzPoint = new google.maps.LatLng($lzLat, $lzLon);
+
+  var bounds = new google.maps.LatLngBounds();
   function fit(){
-    map.panTo(bounds.getCenter()); 
-    map.setZoom(map.getBoundsZoomLevel(bounds));
+    map.panTo(bounds.getCenter());
+    map.fitbounds(bounds);
   }
 
-  var blueIcon = new GIcon(G_DEFAULT_ICON);
-  blueIcon.image = "$script_path/images/blue-dot.png";
-  blueIcon.iconSize = new GSize(32, 32);
-  blueIcon.shadowSize = new GSize(32, 32);
-  blueIcon.iconAnchor = new GPoint(16, 32);
-  blueIcon.infoWindowAnchor = new GPoint(14, 2);
+  var lzMarker = new google.maps.Marker({
+      icon: '$script_path/images/landing-point.png',
+      position: lzPoint,
+      map: map
+  });
 
-  var exitPointIcon = new GIcon(G_DEFAULT_ICON);
-  exitPointIcon.image = "$script_path/images/exit-point.png";
-  exitPointIcon.iconSize = new GSize(20, 32);
-  exitPointIcon.shadowSize = new GSize(32, 32);
-  exitPointIcon.iconAnchor = new GPoint(10, 32);
-  exitPointIcon.infoWindowAnchor = new GPoint(14, 2);
+  var theSpotFFdrift = new google.maps.LatLng($latSpot, $lonSpot);
+  var theSpotFFCanopyDrift = new google.maps.LatLng($latFarSpot, $lonFarSpot);
 
-  var openingPointIcon = new GIcon(G_DEFAULT_ICON);
-  openingPointIcon.image = "$script_path/images/opening-point.png";
-  openingPointIcon.iconSize = new GSize(20, 32);
-  openingPointIcon.shadowSize = new GSize(32, 32);
-  openingPointIcon.iconAnchor = new GPoint(10, 32);
-  openingPointIcon.infoWindowAnchor = new GPoint(14, 2);
+  var theSpotFFdriftMarker = new google.maps.Marker({
+      icon: '$script_path/images/opening-point.png',
+      position: theSpotFFdrift,
+      map: map
+  });
 
-  var landingPointIcon = new GIcon(G_DEFAULT_ICON);
-  landingPointIcon.image = "$script_path/images/landing-point.png";
-  landingPointIcon.iconSize = new GSize(20, 32);
-  landingPointIcon.shadowSize = new GSize(32, 32);
-  landingPointIcon.iconAnchor = new GPoint(10, 32);
-  landingPointIcon.infoWindowAnchor = new GPoint(14, 2);
+  var theSpotFFCanopyDriftMarker = new google.maps.Marker({
+      icon: '$script_path/images/exit-point.png',
+      position: theSpotFFCanopyDrift,
+      map: map
+  });
 
-  landingMarkerOptions = { icon:landingPointIcon };
-  openingMarkerOptions = { icon:openingPointIcon };
-  exitMarkerOptions = { icon:exitPointIcon };
+  var jumpRun = new google.maps.Polyline({
+     path: [
+         lzPoint,
+         theSpotFFdrift
+     ],
+     strokeColor: '#FF0000',
+     strokeWeight: 7
+  });
 
-  var lzMarker = new GMarker(lzPoint, landingMarkerOptions);
-  map.addOverlay(lzMarker);
+  var jumpRunFar = new google.maps.Polyline({
+     path: [
+         theSpotFFdrift,
+         theSpotFFCanopyDrift
+     ],
+     strokeColor: '#FF0000',
+     strokeWeight: 7
+  });
 
-  var theSpotFFdrift = new GLatLng($latSpot, $lonSpot);
-  var theSpotFFCanopyDrift = new GLatLng($latFarSpot, $lonFarSpot);
-  var theSpotFFdriftMarker = new GMarker(theSpotFFdrift, openingMarkerOptions);
-  var theSpotFFCanopyDriftMarker = new GMarker(theSpotFFCanopyDrift, exitMarkerOptions);
-
-  var jumpRun = new GPolyline([
-    lzPoint,
-    theSpotFFdrift
-  ], "#ff0000", 7);
-
-  var jumpRunFar = new GPolyline([
-    theSpotFFdrift,
-    theSpotFFCanopyDrift
-  ], "#0000ff", 7);
+  jumpRun.setMap(map);
+  jumpRunFar.setMap(map);
 
   var lzHtml = "<span style='font-family:verdana;font-size:small'><b>Landing Zone</b><br />" +
                "$pepLatSexHtml, $pepLonSexHtml</span>";
@@ -595,16 +587,31 @@ function initialize() {
                           "&deg; $compass north</span><br />" +
                           "<span style='font-family:verdana;font-size:x-small'>$farSpotLatSexHtml, $farSpotLonSexHtml</span>";
 
-  GEvent.addListener(lzMarker, "click", function() { lzMarker.openInfoWindowHtml(lzHtml); });
-  GEvent.addListener(theSpotFFdriftMarker, "click", function() { theSpotFFdriftMarker.openInfoWindowHtml(theSpotHtml); });
-  GEvent.addListener(theSpotFFCanopyDriftMarker, "click", function() { theSpotFFCanopyDriftMarker.openInfoWindowHtml(theSpotCanopyHtml); });
+  var lzInfoWindow = new google.maps.InfoWindow({
+      content: lzHtml
+  });
 
-  map.addOverlay(jumpRun);
-  map.addOverlay(jumpRunFar);
-  map.addOverlay(theSpotFFdriftMarker);
-  map.addOverlay(theSpotFFCanopyDriftMarker);
+  var theSpotInfoWindow = new google.maps.InfoWindow({
+      content: theSpotHtml
+  });
 
-  bounds = new GLatLngBounds();
+  var theSpotCanopyInfoWindow = new google.maps.InfoWindow({
+      content: theSpotCanopyHtml
+  });
+
+  lzMarker.addListener('click', function() {
+     lzInfoWindow.open(map, lzMarker);
+  });
+
+  theSpotFFdriftMarker.addListener('click', function() {
+     theSpotInfoWindow.open(map, theSpotFFdriftMarker);
+  });
+
+  theSpotFFCanopyDriftMarker.addListener('click', function() {
+     theSpotheSpotCanopyInfoWindow.open(map, theSpotFFCanopyDriftMarker);
+  });
+
+  bounds = new google.maps.LatLngBounds();
   var givenQuality = 40;
 HTML;
 
@@ -643,28 +650,73 @@ HTML;
 $header .= <<<HTML
   //fit();
 
-  function drawCircle(center, radius, nodes, liColor, liWidth, liOpa, fillColor, fillOpa)
+  function drawCircle(center, radius, nodes, liColor, liWidth, liOpa, myFillColor, fillOpa)
   {
     //calculating km/degree
-    var latConv = center.distanceFrom(new GLatLng(center.lat()+0.1, center.lng()))/100;
-    var lngConv = center.distanceFrom(new GLatLng(center.lat(), center.lng()+0.1))/100;
+    var latConv = center.distanceFrom(new google.maps.LatLng(center.lat()+0.1, center.lng()))/100;
+    var lngConv = center.distanceFrom(new google.maps.LatLng(center.lat(), center.lng()+0.1))/100;
 
-    //Loop 
+    //Loop
     var points = [];
     var step = parseInt(360/nodes)||10;
     for(var i=0; i<=360; i+=step)
     {
-      var pint = new GLatLng(center.lat() + (radius/latConv * Math.cos(i * Math.PI/180)), center.lng() + 
+      var pint = new google.maps.LatLng(center.lat() + (radius/latConv * Math.cos(i * Math.PI/180)), center.lng() +
       (radius/lngConv * Math.sin(i * Math.PI/180)));
       points.push(pint);
       bounds.extend(pint); //this is for fit function
     }
-    points.push(points[0]);
-    fillColor = fillColor||liColor||"#0055ff";
+    // points.push(points[0]);
+    myFillColor = myFillColor||liColor||"#0055ff";
     liWidth = liWidth||2;
-    var poly = new GPolygon(points,liColor,liWidth,liOpa,fillColor,fillOpa);
-    map.addOverlay(poly);
+
+    var poly = new google.maps.Polygon({
+        paths: points,
+        strokeColor: liColor,
+        strokeWeight: liWidth,
+        stokeOpacity: liOpa,
+        fillColor: myFillColor,
+        fillOpacity: fillOpa
+    });
+
+    poly.setMap(map);
+
   }
+}
+google.maps.event.addDomListener(window, 'load', initialize);
+
+/**
+* @param {google.maps.LatLng} newLatLng
+* @returns {number}
+*/
+google.maps.LatLng.prototype.distanceFrom = function(newLatLng) {
+   // setup our variables
+   var lat1 = this.lat();
+   var radianLat1 = lat1 * ( Math.PI  / 180 );
+   var lng1 = this.lng();
+   var radianLng1 = lng1 * ( Math.PI  / 180 );
+   var lat2 = newLatLng.lat();
+   var radianLat2 = lat2 * ( Math.PI  / 180 );
+   var lng2 = newLatLng.lng();
+   var radianLng2 = lng2 * ( Math.PI  / 180 );
+   // sort out the radius, MILES or KM?
+   var earth_radius = 3959; // (km = 6378.1) OR (miles = 3959) - radius of the earth
+
+   // sort our the differences
+   var diffLat =  ( radianLat1 - radianLat2 );
+   var diffLng =  ( radianLng1 - radianLng2 );
+   // put on a wave (hey the earth is round after all)
+   var sinLat = Math.sin( diffLat / 2  );
+   var sinLng = Math.sin( diffLng / 2  );
+
+   // maths - borrowed from http://www.opensourceconnections.com/wp-content/uploads/2009/02/clientsidehaversinecalculation.html
+   var a = Math.pow(sinLat, 2.0) + Math.cos(radianLat1) * Math.cos(radianLat2) * Math.pow(sinLng, 2.0);
+
+   // work out the distance
+   var distance = earth_radius * 2 * Math.asin(Math.min(1, Math.sqrt(a)));
+
+   // return the distance
+   return distance;
 }
 </script>
 <style type="text/css">
@@ -707,7 +759,7 @@ img.key {
 -->
 </style>
 </head>
-<body onload="initialize()" onunload="GUnload()">
+<body>
 HTML;
 
 if ($DEBUG) $body .= <<<HTML
